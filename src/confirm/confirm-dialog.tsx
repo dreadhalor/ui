@@ -152,6 +152,9 @@ export function ConfirmDialog({
     <AlertDialog.Root open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop
+          // Base UI drops the backdrop of a dialog opened inside another one -
+          // a delete confirm from inside the Lightbox left the photo undimmed.
+          forceRender
           {...contain}
           onClick={(e) => {
             stop(e)

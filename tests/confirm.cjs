@@ -84,6 +84,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
       return !!hit?.closest('[role="alertdialog"]')
     })
     ok('confirm sits above the lightbox', top)
+    // Nested inside the Lightbox's dialog, the backdrop must still render and dim it.
+    const dims = await p2.evaluate(() => {
+      const bd = [...document.querySelectorAll('[role="presentation"], div')].find((d) => d.className?.includes?.('bg-black/60') && getComputedStyle(d).position === 'fixed')
+      return !!bd && getComputedStyle(bd).opacity === '1'
+    })
+    ok('backdrop renders (dims the lightbox) even though nested', dims)
     const box = await p2.evaluate(() => { const r = document.querySelector('[role="alertdialog"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + 20] })
     await drag(box, [box[0], box[1] + 250]); await sleep(500)
     ok('drag on the confirm does not close the lightbox', !!(await p2.$('[role="dialog"]')) && !!(await p2.$('[role="alertdialog"]')))
