@@ -85,10 +85,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     })
     ok('confirm sits above the lightbox', top)
     // Nested inside the Lightbox's dialog, the backdrop must still render and dim it.
-    const dims = await p2.evaluate(() => {
-      const bd = [...document.querySelectorAll('[role="presentation"], div')].find((d) => d.className?.includes?.('bg-black/60') && getComputedStyle(d).position === 'fixed')
-      return !!bd && getComputedStyle(bd).opacity === '1'
-    })
+    // Wait out the 200ms fade-in rather than sampling once (fixed delays flake under load).
+    const dims = await p2
+      .waitForFunction(() => {
+        const bd = [...document.querySelectorAll('div')].find((d) => d.className?.includes?.('bg-black/60') && getComputedStyle(d).position === 'fixed')
+        return !!bd && getComputedStyle(bd).opacity === '1'
+      }, null, { timeout: 2000 })
+      .then(() => true, () => false)
     ok('backdrop renders (dims the lightbox) even though nested', dims)
     const box = await p2.evaluate(() => { const r = document.querySelector('[role="alertdialog"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + 20] })
     await drag(box, [box[0], box[1] + 250]); await sleep(500)
