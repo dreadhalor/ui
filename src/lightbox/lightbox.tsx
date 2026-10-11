@@ -154,7 +154,12 @@ export function Lightbox({
 
   const onScroll = () => {
     const el = scroller.current
-    if (!el || programmatic.current || !el.clientWidth) return
+    // Not while closing: the exit animation scales the popup, the strip's
+    // width changes, and the scroll event that follows reported a slide the
+    // app had already let go of - with `index={viewing ?? 0}`, onIndexChange
+    // then set `viewing` again and reopened the viewer. (LoadLab's original
+    // guarded this with an isClosing ref.)
+    if (!open || !el || programmatic.current || !el.clientWidth) return
     const i = Math.round(el.scrollLeft / el.clientWidth)
     if (i !== index && i >= 0 && i < count) onIndexChange(i)
   }
@@ -227,12 +232,16 @@ export function Lightbox({
           </Dialog.Description>
 
           <div ref={stageRef} className="relative h-full overflow-hidden">
-            {index > 0 && !zoomed && (
+            {/* While zoomed the arrows are disabled at once, so a tap can't
+                land on one mid-fade, and fade out rather than vanish. */}
+            {index > 0 && (
               <button
                 type="button"
                 onClick={() => step(-1)}
                 aria-label="Previous"
-                className="absolute top-1/2 left-2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                disabled={zoomed}
+                aria-hidden={zoomed || undefined}
+                className={`absolute top-1/2 left-2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-[opacity,background-color] duration-200 hover:bg-white/20 ${zoomed ? 'pointer-events-none opacity-0' : ''}`}
               >
                 <Chevron dir="left" />
               </button>
@@ -259,12 +268,14 @@ export function Lightbox({
               ))}
             </div>
 
-            {index < count - 1 && !zoomed && (
+            {index < count - 1 && (
               <button
                 type="button"
                 onClick={() => step(1)}
                 aria-label="Next"
-                className="absolute top-1/2 right-2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                disabled={zoomed}
+                aria-hidden={zoomed || undefined}
+                className={`absolute top-1/2 right-2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-[opacity,background-color] duration-200 hover:bg-white/20 ${zoomed ? 'pointer-events-none opacity-0' : ''}`}
               >
                 <Chevron dir="right" />
               </button>

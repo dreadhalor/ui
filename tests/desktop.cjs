@@ -1,0 +1,28 @@
+const { chromium } = require('playwright-core')
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+;(async () => {
+  const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true })
+  const ok = (n, c, x = '') => console.log(`${c ? 'PASS' : 'FAIL'} ${n} ${x}`)
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    const counter = () => page.evaluate(() => [...document.querySelectorAll('span')].find((s) => /\d+ \/ \d+/.test(s.textContent))?.textContent)
+    const scale = (i) => page.evaluate((i) => { const c = document.querySelector(`[data-index="${i}"] .react-transform-component`); const m = getComputedStyle(c).transform; return m === 'none' ? 1 : new DOMMatrix(m).a }, i)
+    await page.goto(process.env.DEMO_URL ?? 'http://localhost:5199/')
+    await page.click('[data-testid="tile-0"]'); await sleep(500)
+    await page.mouse.dblclick(640, 400); await sleep(600)
+    ok('mouse double-click zooms', (await scale(0)) > 2, `scale=${await scale(0)}`)
+    await page.mouse.dblclick(640, 400); await sleep(600)
+    ok('second double-click resets', (await scale(0)) < 1.01)
+    await page.mouse.move(640, 400)
+    await page.keyboard.down('Control'); for (let k = 0; k < 5; k++) { await page.mouse.wheel(0, -40); await sleep(30) } await page.keyboard.up('Control'); await sleep(400)
+    ok('trackpad pinch (ctrl+wheel) zooms', (await scale(0)) > 1.05, `scale=${await scale(0)}`)
+    await page.mouse.dblclick(640, 400); await sleep(600)
+    await page.click('button[aria-label="Next"]'); await sleep(700)
+    ok('next button', (await counter()) === '2 / 4', await counter())
+    await page.keyboard.press('ArrowRight'); await sleep(700)
+    ok('arrow right', (await counter()) === '3 / 4', await counter())
+    await page.keyboard.press('Escape'); await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 8000 }).catch(() => {})
+    const still = await page.evaluate(() => { const d = document.querySelector('[role="dialog"]'); return d && { attrs: [...d.attributes].filter((a) => a.name.startsWith('data-')).map((a) => a.name).join(' '), anims: d.getAnimations({ subtree: true }).map((a) => a.playState + ':' + (a.transitionProperty || a.animationName) + '@' + (a.effect?.target?.getAttribute?.('aria-label') || a.effect?.target?.className?.slice?.(0, 30))), active: document.activeElement?.outerHTML.slice(0, 120) } }); ok('escape closes', !still, JSON.stringify(still))
+
+  } finally { await browser.close() }
+})()
