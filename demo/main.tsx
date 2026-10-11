@@ -25,19 +25,30 @@ function LightboxDemo() {
       <Lightbox
         open={viewing !== null}
         onClose={() => setViewing(null)}
-        count={PHOTOS.length}
+        count={PHOTOS.length + 1}
         index={viewing ?? 0}
         onIndexChange={setViewing}
-        renderItem={(i) => (
-          <LightboxZoom>
-            <img
-              src={PHOTOS[i]}
-              alt={`Test ${i + 1}`}
-              draggable={false}
-              className="max-h-full max-w-full select-none object-contain p-2"
-            />
-          </LightboxZoom>
-        )}
+        renderItem={(i) =>
+          i < PHOTOS.length ? (
+            <LightboxZoom>
+              <img
+                src={PHOTOS[i]}
+                alt={`Test ${i + 1}`}
+                draggable={false}
+                className="max-h-full max-w-full select-none object-contain p-2"
+              />
+            </LightboxZoom>
+          ) : (
+            // A slide that isn't a photo, with something focusable in it - like
+            // LoadLab's locked photos. Opening the viewer must not jump here.
+            <div className="flex flex-col items-center gap-3 text-neutral-300">
+              <p>Locked slide</p>
+              <button type="button" className="rounded-lg bg-pink-600 px-4 py-2 text-white">
+                Unlock
+              </button>
+            </div>
+          )
+        }
       />
     </section>
   )

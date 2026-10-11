@@ -11,7 +11,7 @@ Stack it assumes: React 19, Base UI (`@base-ui/react` 1.x), Tailwind 4.
 1. Install a tagged version straight from GitHub:
 
    ```sh
-   pnpm add github:dreadhalor/ui#v0.1.3
+   pnpm add github:dreadhalor/ui#v0.2.0
    ```
 
 2. It ships TypeScript source, so let Next compile it (`next.config`):
@@ -60,7 +60,11 @@ import { Lightbox, LightboxZoom } from '@dreadhalor/ui/lightbox'
   zoom.
 - `closeButton={false}` / `counter={false}` to supply your own header as `children`;
   `stageRef` gives drawers a positioned box to portal into; `data-lightbox-no-swipe` on an element
-  stops a drag that starts inside it from closing the viewer.
+  stops a drag that starts inside it from closing the viewer (dialogs portalled out of the viewer
+  are already ignored).
+- `containEvents` (default on) stops pointer/touch events bubbling out through the React tree.
+  Turn it off if something inside relies on a document-level listener, like a menu that closes on
+  an outside tap (LoadLab's photo header does).
 
 The comments in `src/lightbox/` explain each non-obvious choice; most were bugs first.
 

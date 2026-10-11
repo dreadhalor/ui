@@ -35,12 +35,23 @@ export type LightboxProps = {
   closeButton?: boolean
   /** The default "3 / 12" counter, bottom centre. */
   counter?: boolean
-  /** Drag down to close. Touches inside [data-lightbox-no-swipe] never start it. */
+  /**
+   * Drag down to close. Touches inside [data-lightbox-no-swipe], or in a
+   * dialog portalled out of the viewer, never start it.
+   */
   swipeToClose?: boolean
   /** Left/right arrow keys step between slides (ignored while typing in a field). */
   keyboard?: boolean
   /** The positioned box the slides sit in, for portalling drawers or menus into it. */
   stageRef?: RefObject<HTMLDivElement | null>
+  /**
+   * Stop pointer and touch events leaving the viewer (default on). React
+   * bubbles portal events through the React tree, so without this a swipe in
+   * the viewer reaches gesture handlers on whatever opened it. It also stops
+   * them reaching document-level listeners - turn it off if something inside
+   * the viewer relies on one (e.g. a menu that closes on an outside tap).
+   */
+  containEvents?: boolean
   /** Anything else to draw over the slides: a header, a drawer, a dialog. */
   children?: ReactNode
 }
@@ -58,9 +69,9 @@ export type LightboxProps = {
  *   of fading.
  * - Everything renders in a portal, so a transformed ancestor (a sliding
  *   panel) can't become the containing block for the fixed layers.
- * - Pointer and touch events stop here. React bubbles portal events through
- *   the REACT tree, so a swipe between photos also reached the swipe-to-dismiss
- *   of the panel the viewer was opened from, and closed it.
+ * - Pointer and touch events stop here (`containEvents`). React bubbles portal
+ *   events through the REACT tree, so a swipe between photos also reached the
+ *   swipe-to-dismiss of the panel the viewer was opened from, and closed it.
  * - Slides are `touch-action: pan-x`: one finger scrolls the strip natively,
  *   and the browser neither scrolls vertically (the drag-down is ours) nor
  *   pinch-zooms the PAGE, which on iOS ignores maximum-scale and otherwise
@@ -81,8 +92,10 @@ export function Lightbox({
   swipeToClose = true,
   keyboard = true,
   stageRef,
+  containEvents = true,
   children,
 }: LightboxProps) {
+  const popup = useRef<HTMLDivElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const programmatic = useRef(false)
   const drag = useRef<{ x: number; y: number } | null>(null)
@@ -133,7 +146,10 @@ export function Lightbox({
   // On the popup, not the document: Base UI's dialog stops arrow-key events
   // from propagating out of the popup, so a document listener never hears them.
   const onKeyDown = (e: KeyboardEvent) => {
-    if (!keyboard) return
+    // Only keys pressed in the viewer's own DOM. A dialog opened from inside
+    // it (a delete confirmation) is portalled elsewhere but still bubbles
+    // here through the React tree.
+    if (!keyboard || !e.currentTarget.contains(e.target as Node)) return
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]'))
       return
     if (e.key === 'ArrowRight') step(1)
@@ -164,12 +180,17 @@ export function Lightbox({
     if (i !== index && i >= 0 && i < count) onIndexChange(i)
   }
 
-  const stop = (e: SyntheticEvent) => e.stopPropagation()
+  const stop = (e: SyntheticEvent) => {
+    if (containEvents) e.stopPropagation()
+  }
 
   const onTouchStart = (e: TouchEvent) => {
     stop(e)
     const t = e.touches[0]
-    const blocked = (e.target as HTMLElement).closest('[data-lightbox-no-swipe]')
+    // Same for drags: one that starts in a portalled child dialog isn't ours.
+    const blocked =
+      !e.currentTarget.contains(e.target as Node) ||
+      (e.target as HTMLElement).closest('[data-lightbox-no-swipe]')
     drag.current =
       swipeToClose && !zoomed && !blocked && e.touches.length === 1 && t
         ? { x: t.clientX, y: t.clientY }
@@ -207,6 +228,12 @@ export function Lightbox({
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[100] bg-black/95 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <Dialog.Popup
+          ref={popup}
+          // Focus the popup itself on open. Base UI's default is the first
+          // focusable element, which can sit in a LATER slide (a video's
+          // controls, a locked photo's button) - focusing it scrolled the
+          // strip there while the counter still showed the tapped photo.
+          initialFocus={popup}
           onKeyDown={onKeyDown}
           onPointerDown={stop}
           onPointerMove={stop}
