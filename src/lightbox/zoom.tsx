@@ -9,7 +9,7 @@ import {
 import { useSlide } from './context'
 
 const TAP_SCALE = 2.5
-/** Two taps closer together than this, in time and in px, are a double-tap. */
+/** A second tap starting this soon after the first lifts, this close to it, is a double-tap. */
 const DOUBLE_TAP_MS = 300
 const DOUBLE_TAP_PX = 40
 /** A touch that moves further than this was a swipe, not a tap. */
@@ -52,7 +52,11 @@ export function LightboxZoom({
   useEffect(() => {
     const el = box.current
     if (!el) return
-    let start: { x: number; y: number } | null = null
+    // `second` is decided when the finger comes DOWN: a double-tap is a short
+    // gap between lifting and touching again. Timing it lift-to-lift (as this
+    // first did) counts the second tap's own duration too, and a relaxed
+    // double-tap measured ~330ms that way, so most of them were missed.
+    let start: { x: number; y: number; second: boolean } | null = null
     let lastTap: { t: number; x: number; y: number } | null = null
     let lastTouchAt = 0
 
@@ -64,34 +68,39 @@ export function LightboxZoom({
     }
 
     const onTouchStart = (e: TouchEvent) => {
-      lastTouchAt = Date.now()
+      const now = Date.now()
+      lastTouchAt = now
       const t = e.touches[0]
-      start = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null
-      if (e.touches.length > 1) lastTap = null
+      if (e.touches.length !== 1 || !t) {
+        start = null
+        lastTap = null
+        return
+      }
+      const second =
+        !!lastTap &&
+        now - lastTap.t < DOUBLE_TAP_MS &&
+        Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) < DOUBLE_TAP_PX
+      start = { x: t.clientX, y: t.clientY, second }
     }
     const onTouchEnd = (e: TouchEvent) => {
       lastTouchAt = Date.now()
       const t = e.changedTouches[0]
       if (!start || !t || e.touches.length > 0) return
+      const { second } = start
       const moved = Math.hypot(t.clientX - start.x, t.clientY - start.y)
       start = null
       if (moved > TAP_SLOP_PX) {
         lastTap = null
         return
       }
-      const now = Date.now()
-      if (
-        lastTap &&
-        now - lastTap.t < DOUBLE_TAP_MS &&
-        Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) < DOUBLE_TAP_PX
-      ) {
+      if (second) {
         lastTap = null
         // After the library's own touchend, which would otherwise start its
         // pan-settling animation and cancel this one.
         const { clientX, clientY } = t
         window.setTimeout(() => toggle(clientX, clientY), 0)
       } else {
-        lastTap = { t: now, x: t.clientX, y: t.clientY }
+        lastTap = { t: Date.now(), x: t.clientX, y: t.clientY }
       }
     }
     const onDoubleClick = (e: MouseEvent) => {
