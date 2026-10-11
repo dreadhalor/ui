@@ -11,7 +11,7 @@ Stack it assumes: React 19, Base UI (`@base-ui/react` 1.x), Tailwind 4.
 1. Install a tagged version straight from GitHub:
 
    ```sh
-   pnpm add github:dreadhalor/ui#v0.2.1
+   pnpm add github:dreadhalor/ui#v0.3.0
    ```
 
 2. It ships TypeScript source, so let Next compile it (`next.config`):
@@ -67,6 +67,45 @@ import { Lightbox, LightboxZoom } from '@dreadhalor/ui/lightbox'
   an outside tap (LoadLab's photo header does).
 
 The comments in `src/lightbox/` explain each non-obvious choice; most were bugs first.
+
+### Confirm — `@dreadhalor/ui/confirm`
+
+A yes-or-no question on Base UI's alert dialog. Each app themes it once and every confirm in it
+looks native; the behaviour is shared:
+
+- **Danger opens on Cancel**, so a reflexive Enter keeps things; a plain confirm opens on the action.
+- **Async actions run inside it**: return a promise from `onConfirm` and both buttons disable (with
+  `pendingLabel`), Escape and the backdrop wait, success closes, a thrown error stays on screen.
+- **Events stop at the dialog**, so one opened from inside a link or a swipeable panel can't click
+  the link or drag the panel. It sits above the Lightbox (z-150).
+- Escape, Cancel and the backdrop all answer no.
+
+```tsx
+import { ConfirmDialog } from '@dreadhalor/ui/confirm'
+
+<ConfirmDialog
+  open={asking}
+  onOpenChange={setAsking}
+  title="Delete this memory?"
+  description="This cannot be undone."
+  confirmLabel="Delete"
+  pendingLabel="Deleting…"
+  danger
+  onConfirm={() => deleteMemory(id)}   // async: runs in the dialog
+  theme={appConfirmTheme}
+/>
+```
+
+Or ask in one line from anywhere under a `<ConfirmProvider theme={…}>`:
+
+```tsx
+const confirm = useConfirm()
+if (!(await confirm({ title: 'Archive it?', confirmLabel: 'Archive' }))) return
+```
+
+`theme` is a set of class strings, one per part (`backdrop`, `popup`, `title`, `description`,
+`error`, `actions`, `cancel`, `confirm`, `danger`). A slot you set replaces the default; spread
+`defaultConfirmTheme` to start from it.
 
 ## Developing
 

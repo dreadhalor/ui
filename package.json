@@ -1,12 +1,13 @@
 {
   "name": "@dreadhalor/ui",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Components shared across Scott's apps. Ships TypeScript source; see README for consumer setup.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./lightbox": "./src/lightbox/index.ts"
+    "./lightbox": "./src/lightbox/index.ts",
+    "./confirm": "./src/confirm/index.ts"
   },
   "files": [
     "src"
