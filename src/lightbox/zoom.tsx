@@ -10,7 +10,7 @@ import { useSlide } from './context'
 
 const TAP_SCALE = 2.5
 /** A second tap starting this soon after the first lifts, this close to it, is a double-tap. */
-const DOUBLE_TAP_MS = 300
+const DOUBLE_TAP_MS = 350
 const DOUBLE_TAP_PX = 40
 /** A touch that moves further than this was a swipe, not a tap. */
 const TAP_SLOP_PX = 10
@@ -103,6 +103,14 @@ export function LightboxZoom({
         lastTap = { t: Date.now(), x: t.clientX, y: t.clientY }
       }
     }
+    // A phone follows every tap with fake mouse events for old sites. Once
+    // zoomed, the library takes that mousedown as the start of a mouse drag,
+    // which cancels any running animation - so the zoom-out a double-tap had
+    // just started stopped dead, and only zoom-in (when the library ignores
+    // the mouse) ever worked on a phone. Real mice never follow a touch.
+    const onMouseDown = (e: MouseEvent) => {
+      if (Date.now() - lastTouchAt < 1000) e.stopPropagation()
+    }
     const onDoubleClick = (e: MouseEvent) => {
       if (Date.now() - lastTouchAt < 1000) return
       toggle(e.clientX, e.clientY)
@@ -114,10 +122,12 @@ export function LightboxZoom({
     el.addEventListener('touchstart', onTouchStart, opts)
     el.addEventListener('touchend', onTouchEnd, opts)
     el.addEventListener('dblclick', onDoubleClick, opts)
+    el.addEventListener('mousedown', onMouseDown, opts)
     return () => {
       el.removeEventListener('touchstart', onTouchStart, opts)
       el.removeEventListener('touchend', onTouchEnd, opts)
       el.removeEventListener('dblclick', onDoubleClick, opts)
+      el.removeEventListener('mousedown', onMouseDown, opts)
     }
   }, [maxScale])
 
