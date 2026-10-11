@@ -4,7 +4,10 @@ import { Lightbox, LightboxZoom } from '../src/lightbox'
 import './styles.css'
 
 /** Every shared component, live, with its states - the package's own gallery page. */
-const PHOTOS = ['/test-1.svg', '/test-2.svg', '/test-3.svg', '/test-4.svg']
+const BASE = ['/test-1.svg', '/test-2.svg', '/test-3.svg', '/test-4.svg']
+// `?n=300` repeats the test images into a long strip - LoadLab-sized - for memory checks.
+const N = Number(new URLSearchParams(window.location.search).get('n')) || BASE.length
+const PHOTOS = Array.from({ length: N }, (_, i) => BASE[i % BASE.length] as string)
 
 function LightboxDemo() {
   const [viewing, setViewing] = useState<number | null>(null)
@@ -16,8 +19,8 @@ function LightboxDemo() {
         zoom.
       </p>
       <div className="grid grid-cols-4 gap-2">
-        {PHOTOS.map((src, i) => (
-          <button key={src} type="button" onClick={() => setViewing(i)} data-testid={`tile-${i}`}>
+        {PHOTOS.slice(0, 4).map((src, i) => (
+          <button key={i} type="button" onClick={() => setViewing(i)} data-testid={`tile-${i}`}>
             <img src={src} alt={`Test ${i + 1}`} className="aspect-square w-full object-cover" />
           </button>
         ))}

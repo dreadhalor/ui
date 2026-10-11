@@ -36,7 +36,7 @@ export function LightboxZoom({
   children: ReactNode
   maxScale?: number
 }) {
-  const { active, setZoomed } = useSlide()
+  const { active, near, setZoomed } = useSlide()
   const zoom = useRef<ReactZoomPanPinchRef>(null)
   const box = useRef<HTMLDivElement>(null)
   const [scaled, setScaled] = useState(false)
@@ -49,6 +49,8 @@ export function LightboxZoom({
     if (active) setZoomed(scaled)
   }, [active, scaled, setZoomed])
 
+  // Re-run on `near`: a far slide renders no box, so attach when it comes close.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: near decides whether box exists
   useEffect(() => {
     const el = box.current
     if (!el) return
@@ -129,7 +131,13 @@ export function LightboxZoom({
       el.removeEventListener('dblclick', onDoubleClick, opts)
       el.removeEventListener('mousedown', onMouseDown, opts)
     }
-  }, [maxScale])
+  }, [maxScale, near])
+
+  // Far slides get no zoom machinery at all. The library pins every wrapper
+  // to its own GPU layer (translate3d), and one per slide - hundreds in
+  // LoadLab - made iPhone Safari's page process run out of memory and crash
+  // (it showed when opening the app switcher, which snapshots the page).
+  if (!near) return <div className="flex h-full w-full items-center justify-center">{children}</div>
 
   return (
     <div ref={box} className="h-full w-full">

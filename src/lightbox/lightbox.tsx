@@ -287,7 +287,12 @@ export function Lightbox({
                   className="flex h-full w-full shrink-0 snap-center items-center justify-center"
                 >
                   <SlideContext.Provider
-                    value={{ index: i, active: open && i === index, setZoomed }}
+                    value={{
+                      index: i,
+                      active: open && i === index,
+                      near: Math.abs(i - index) <= 1,
+                      setZoomed,
+                    }}
                   >
                     {renderItem(i)}
                   </SlideContext.Provider>
