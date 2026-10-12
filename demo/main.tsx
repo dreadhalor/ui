@@ -2,6 +2,7 @@ import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ConfirmDialog, ConfirmProvider, useConfirm } from '../src/confirm'
 import { Lightbox, LightboxZoom } from '../src/lightbox'
+import { sendOrThrow, useUploadQueue } from '../src/upload'
 import './styles.css'
 
 /** Every shared component, live, with its states - the package's own gallery page. */
@@ -173,12 +174,106 @@ function ConfirmDemo() {
   )
 }
 
+function UploadDemo() {
+  const [concurrency, setConcurrency] = useState(1)
+  const [settled, setSettled] = useState(0)
+  const q = useUploadQueue({
+    concurrency,
+    validate: (f) => (f.size > 5 * 1024 * 1024 ? 'Too big for the demo (5 MB at most).' : null),
+    upload: (file, { progress, signal }) =>
+      sendOrThrow('/demo-upload', file, {
+        headers: { 'x-file-name': encodeURIComponent(file.name) },
+        onProgress: progress,
+        signal,
+      }),
+    onSettled: () => setSettled((n) => n + 1),
+  })
+  const pct = q.totals.total ? Math.round((q.totals.sent / q.totals.total) * 100) : 0
+  return (
+    <section className="space-y-3">
+      <h2 className="font-semibold text-lg">Upload queue</h2>
+      <p className="text-neutral-400 text-sm">
+        Real byte progress, one failure never stops the rest, retry, cancel. Name a file with
+        “fail”, “toobig”, “flaky” or “slow” to see the server answer that way.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="file"
+          multiple
+          data-testid="upload-input"
+          onChange={(e) => q.add(e.target.files)}
+        />
+        <select
+          data-testid="upload-concurrency"
+          value={concurrency}
+          onChange={(e) => setConcurrency(Number(e.target.value))}
+          className="rounded bg-neutral-800 px-2 py-1 text-sm"
+        >
+          <option value={1}>one at a time</option>
+          <option value={2}>two at a time</option>
+        </select>
+        <button
+          type="button"
+          data-testid="upload-retry"
+          onClick={() => q.retry()}
+          className="rounded-lg bg-neutral-700 px-3 py-1.5 text-sm"
+        >
+          Retry failed
+        </button>
+        <button
+          type="button"
+          data-testid="upload-cancel"
+          onClick={q.cancel}
+          className="rounded-lg bg-neutral-700 px-3 py-1.5 text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+      <div className="h-1.5 rounded bg-neutral-800">
+        <div
+          className="h-full rounded bg-pink-500 transition-[width]"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-neutral-500 text-xs" data-testid="upload-totals">
+        {q.totals.done} done · {q.totals.failed} failed · {q.totals.sent}/{q.totals.total} bytes ·
+        busy {String(q.busy)} · settled {settled}
+      </p>
+      <ul className="space-y-1 text-sm">
+        {q.items.map((i) => (
+          <li
+            key={i.id}
+            data-testid="upload-item"
+            data-name={i.file.name}
+            data-status={i.status}
+            data-sent={i.sent}
+            data-total={i.total}
+            className="flex gap-2"
+          >
+            <span className="w-40 truncate">{i.file.name}</span>
+            <span className="w-24 text-neutral-400">{i.status}</span>
+            <span className="w-16 text-neutral-500">
+              {i.total ? Math.round((i.sent / i.total) * 100) : 0}%
+            </span>
+            {i.error && (
+              <span className="text-red-400" data-testid="upload-error">
+                {i.error}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function App() {
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-6">
       <h1 className="font-bold text-2xl">@dreadhalor/ui</h1>
       <LightboxDemo />
       <ConfirmDemo />
+      <UploadDemo />
     </main>
   )
 }

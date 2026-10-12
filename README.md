@@ -11,7 +11,7 @@ Stack it assumes: React 19, Base UI (`@base-ui/react` 1.x), Tailwind 4.
 1. Install a tagged version straight from GitHub:
 
    ```sh
-   pnpm add github:dreadhalor/ui#v0.3.1
+   pnpm add github:dreadhalor/ui#v0.4.0
    ```
 
 2. It ships TypeScript source, so let Next compile it (`next.config`):
@@ -106,6 +106,37 @@ if (!(await confirm({ title: 'Archive it?', confirmLabel: 'Archive' }))) return
 `theme` is a set of class strings, one per part (`backdrop`, `popup`, `title`, `description`,
 `error`, `actions`, `cancel`, `confirm`, `danger`). A slot you set replaces the default; spread
 `defaultConfirmTheme` to start from it.
+
+### Upload — `@dreadhalor/ui/upload`
+
+The client side of sending files: no UI, no server of its own. Each app draws its own progress
+(rings on tiles, a bar, "Adding photo 2 of 5… 40%") and keeps its own endpoint.
+
+- `send(url, body, { onProgress, signal, method, headers })` — XHR, because fetch has no upload
+  progress. Resolves for any HTTP answer (check `ok`); rejects only when there was no answer.
+- `failureMessage(res)` / `sendOrThrow(...)` — the app's own `{ error }` wins; otherwise plain
+  words, including for a proxy's HTML 413 (Cloudflare's tunnel caps a body at 100 MB).
+- `useUploadQueue({ upload, concurrency = 1, validate, onSettled })` — per-file status
+  (`queued → uploading → processing → done | failed`) and bytes, overall `totals.sent/total`,
+  `add`, `retry`, `remove`, `cancel`, `clear`. One failure never stops the rest.
+
+```tsx
+const q = useUploadQueue({
+  validate: (f) => (f.size > MAX ? 'Photos can be up to 16 MB.' : null),
+  upload: (file, { progress, signal }) => {
+    const form = new FormData()
+    form.set('photo', file)
+    return sendOrThrow('/photos', form, { onProgress: progress, signal })
+  },
+  onSettled: () => router.refresh(),
+})
+<input type="file" multiple onChange={(e) => q.add(e.target.files)} />
+```
+
+Server rules that go with it (see the iOS checklist): files go to a route handler, never a server
+action (Cloudflare blocks those when they carry a file); a Next middleware cuts bodies at 10 MB
+unless `middlewareClientMaxBodySize` is raised; anything over 100 MB through the tunnel must be
+chunked.
 
 ## Developing
 

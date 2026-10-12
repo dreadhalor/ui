@@ -8,8 +8,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     const page = await ctx.newPage()
     const cdp = await ctx.newCDPSession(page)
     const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) })
-    async function tap(x, y, down, drift) { await touch('touchStart', [[x, y]]); await sleep(down / 2); await touch('touchMove', [[x + drift, y + drift / 2]]); await sleep(down / 2); await touch('touchEnd', []) }
-    async function dbl(down, gap, drift) { await tap(196, 400, down, drift); await sleep(gap); await tap(198, 403, down, drift); await sleep(650) }
+    async function tap(x, y, down, drift) { await touch('touchStart', [[x, y]]); await sleep(down / 2); await touch('touchMove', [[x + drift, y + drift / 2]]); await sleep(down / 2); await touch('touchEnd', []); return Date.now() }
+    // The gap is timed from the actual lift, so a busy machine can't stretch it past the window.
+    async function dbl(down, gap, drift) { const lifted = await tap(196, 400, down, drift); await sleep(Math.max(0, gap - (Date.now() - lifted))); await tap(198, 403, down, drift); await sleep(650) }
     const scale = () => page.evaluate(() => { const c = document.querySelector('[data-index="0"] .react-transform-component'); const m = getComputedStyle(c).transform; return m === 'none' ? 1 : +new DOMMatrix(m).a.toFixed(2) })
     await page.goto(process.env.DEMO_URL ?? 'http://localhost:5199/')
     await page.tap('[data-testid="tile-0"]'); await sleep(500)
