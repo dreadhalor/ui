@@ -145,11 +145,15 @@ export function LightboxZoom({
         ref={zoom}
         minScale={1}
         maxScale={maxScale}
-        // A plain wheel or two-finger trackpad scroll moves between slides; a
-        // trackpad pinch (which arrives as ctrl+wheel) still zooms.
+        // A plain wheel never zooms: at 1x, a two-finger trackpad scroll moves
+        // between slides. A trackpad pinch (which arrives as ctrl+wheel) zooms.
         wheel={{ wheelDisabled: true }}
         doubleClick={{ disabled: true }}
         panning={{ disabled: !scaled }}
+        // Zoomed, a two-finger trackpad scroll (or a mouse wheel) pans the photo. At 1x it stays
+        // off, so the same scroll moves between slides. Off by default in the library, which is
+        // why panning a zoomed photo once worked only by dragging (Scott, 2026-10-14).
+        trackPadPanning={{ disabled: !scaled }}
         onTransform={(_, s) => setScaled(s.scale > 1.01)}
       >
         <TransformComponent

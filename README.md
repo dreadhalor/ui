@@ -11,7 +11,7 @@ Stack it assumes: React 19, Base UI (`@base-ui/react` 1.x), Tailwind 4.
 1. Install a tagged version straight from GitHub:
 
    ```sh
-   pnpm add github:dreadhalor/ui#v0.4.0
+   pnpm add github:dreadhalor/ui#v0.4.1
    ```
 
 2. It ships TypeScript source, so let Next compile it (`next.config`):
